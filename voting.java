@@ -9,8 +9,9 @@ public class voting {
     public static HashMap<String, Integer> new_candidates = new HashMap<>();
     public static ArrayList<String> votes = new ArrayList<>();
     public static ArrayList<String> votes_copy = new ArrayList<>();
+    public static ArrayList<String> votes_elimination = new ArrayList<>();
     public static ArrayList<String> winner = new ArrayList<>();
-    public static HashMap<Integer, String > rankmap = new HashMap<>();
+    public static ArrayList<String> eliminated = new ArrayList<>();
     public static int count_loop, counter_winner =0;
     public static boolean checkifSurplus = false;
     public static int checkIfnextCharElected = 0;
@@ -20,9 +21,9 @@ public class voting {
         addcandidates();  //Candidates votemap
         addvotes(); //adding votes
 
-        Scanner in = new Scanner(System.in);
-        num_cand = in.nextInt();
-        win_cand = in.nextInt();
+//        Scanner in = new Scanner(System.in);
+        num_cand = 5;
+        win_cand = 2;
         num_votes = votes.size();
 
         System.out.println("Number of votes is:" +num_votes);
@@ -33,9 +34,16 @@ public class voting {
         System.out.println(" ");
         getFirstPref();
 
-//        while(winner.size() != win_cand && rankmap.size() !=num_cand) {
+        while((winner.size() != win_cand) && (eliminated.size()!=(num_cand-win_cand))) {
             getresult();
-//        }
+        }
+        System.out.println("****RESULTS*****");
+        System.out.println("Elected candidates are:"+winner);
+        System.out.println(" ");
+        System.out.println("Candidates who lost are:"+eliminated);
+        System.out.println(" ");
+        System.out.println("****END OF RESULTS*****");
+
     }
 
     private static void getFirstPref() {
@@ -62,19 +70,19 @@ public class voting {
 
 
     private static void getresult() {
-        int surplus=0;
+        int surplus=0, val_countmap, elimination_counter=0;
         double dist_percent;
+        String key_countmap="";
+        Iterator it_countmap = candidates.keySet().iterator();
         //surplus
         checkSurplus();
         if (checkifSurplus) {
-            Iterator it_countmap = candidates.keySet().iterator();
             while (it_countmap.hasNext()) {
-                String key_countmap = (String) it_countmap.next();
-                int val_countmap = candidates.get(key_countmap);
+                key_countmap = (String) it_countmap.next();
+                val_countmap = candidates.get(key_countmap);
                 if (val_countmap >= final_quota) {
                     new_candidates.remove(key_countmap);
                     winner.add(key_countmap);
-                    rankmap.put(counter_winner, key_countmap);
                     surplus = val_countmap - final_quota;
                     dist_percent = (double) ((surplus * 100 / final_quota));
                     counter_winner++;
@@ -82,8 +90,67 @@ public class voting {
                 }
             }
         }
+        //Elimination works here!
         else {
+            String temp_keycountmap;
+            val_countmap = Collections.min(candidates.values());
+            while (it_countmap.hasNext()){
+                temp_keycountmap = (String) it_countmap.next();
+                int val_countmap1 = candidates.get(temp_keycountmap);
+                if(val_countmap == val_countmap1){
+                    key_countmap = temp_keycountmap;
+                    new_candidates.remove(key_countmap);
+                    break;
+                }
+            }
+            counter_winner++;
+            eliminated.add(key_countmap);
+            addEliminationVotes(key_countmap);
+            candidates.remove(key_countmap);
+        }
+    }
 
+    public static void addEliminationVotes(String val){
+        int value;
+        String key;
+        HashMap<String, Integer> countmap = new HashMap<>();
+        for(int i=0; i<votes_copy.size();i++){
+            String vote = votes_copy.get(i);
+            key = String.valueOf(vote.charAt(0));
+            putInCountMap(i,val,key,vote, countmap);
+        }
+        Iterator it_countmap = countmap.keySet().iterator();
+        while (it_countmap.hasNext()){
+            key = (String) it_countmap.next();
+            value = countmap.get(key);
+            if(candidates.containsKey(key)) {
+                candidates.put(key, candidates.get(key) + value);
+            }
+            System.out.println("Key is: "+key+" value is:"+value);
+        }
+
+        System.out.println("Vote map after round: "+counter_winner);
+        Iterator it_candmap = candidates.keySet().iterator();
+        while (it_candmap.hasNext()){
+            key = (String) it_candmap.next();
+            value = candidates.get(key);
+            System.out.println("Key is:"+key+" and value is:" +value);
+        }
+        System.out.println(" ");
+
+    }
+
+    public static void putInCountMap(int i, String val, String key, String vote, HashMap<String, Integer> countmap){
+        String key1 = "";
+        if(val.equals(key)){
+            checkIfNextElectedSurplus(vote);
+            key1 = String.valueOf(votes.get(i).charAt(checkIfnextCharElected));
+            if(countmap.containsKey(key1)) {
+                countmap.put(key1, countmap.get(key1)+1);
+            }
+            else {
+                countmap.put(key1,1);
+            }
         }
     }
 
@@ -100,8 +167,10 @@ public class voting {
                 checkifSurplus = false;
             }
         }
+
     }
 
+    //Called from getResult. Makes countmap & gives count result after each surplus round
     private static void addSurplusToMap(double dist_percent) {
         String val = winner.get(counter_winner-1);
         String vote, key, key1;
@@ -119,16 +188,7 @@ public class voting {
         for(int j=0; j<votes.size();j++){
             vote = votes.get(j);
             key = String.valueOf(votes.get(j).charAt(0));
-            if(key.equals(val)){
-                checkIfNextElected(vote);
-                key1 = String.valueOf(votes.get(j).charAt(checkIfnextCharElected));
-                if(countmap.containsKey(key1)) {
-                    countmap.put(key1, countmap.get(key1)+1);
-                }
-                else {
-                    countmap.put(key1,1);
-                }
-            }
+            putInCountMap(j,val, key, vote,countmap);
         }
         Iterator it_countmap = countmap.keySet().iterator();
         while (it_countmap.hasNext()){
@@ -149,9 +209,11 @@ public class voting {
             System.out.println("Key is:"+key+" and value is:" +value);
         }
         System.out.println(" ");
+        addvotes();
     }
 
-    private static void checkIfNextElected(String vote) {
+    //Would work for both Elimination & Surplus counting
+    private static void checkIfNextElectedSurplus(String vote) {
         int count=1;
         for(int j=0; j<winner.size(); j++){
             if(String.valueOf(vote.charAt(count)).equals(winner.get(j))) {
@@ -161,7 +223,19 @@ public class voting {
                 checkIfnextCharElected = count;
             }
         }
+        checkIfNextElectedElimination(count, vote);
     }
+    private static void checkIfNextElectedElimination(int count, String vote) {
+        for(int j=0; j<eliminated.size(); j++){
+            if(String.valueOf(vote.charAt(count)).equals(eliminated.get(j))) {
+                count++;
+            }
+            else {
+                checkIfnextCharElected = count;
+            }
+        }
+    }
+
 
 
     private static void addcandidates() {
@@ -173,6 +247,7 @@ public class voting {
     }
 
     private static void addvotes() {
+        votes.clear();
         votes.add("ABCDE");
         votes.add("BC");
         votes.add("BDE");
@@ -194,5 +269,6 @@ public class voting {
         votes.add("ABC");
         votes.add("ABC");
         votes_copy = (ArrayList<String>) votes.clone();
+        votes_elimination = (ArrayList<String>) votes.clone();
     }
 }
