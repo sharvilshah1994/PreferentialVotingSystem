@@ -12,7 +12,7 @@ public class voting {
     public static ArrayList<String> votes_elimination = new ArrayList<>();
     public static ArrayList<String> winner = new ArrayList<>();
     public static ArrayList<String> eliminated = new ArrayList<>();
-    public static int count_loop, counter_winner =0;
+    public static int counter_winner =0;
     public static boolean checkifSurplus = false;
     public static int checkIfnextCharElected = 0;
 
@@ -34,9 +34,14 @@ public class voting {
         System.out.println(" ");
         getFirstPref();
 
-        while((winner.size() != win_cand) && (eliminated.size()!=(num_cand-win_cand))) {
+        while((winner.size() != win_cand)) {
             getresult();
         }
+
+        while (eliminated.size() != 3){
+            getresult();
+        }
+
         System.out.println("****RESULTS*****");
         System.out.println("Elected candidates are:"+winner);
         System.out.println(" ");
@@ -103,19 +108,52 @@ public class voting {
                     break;
                 }
             }
-            counter_winner++;
-            eliminated.add(key_countmap);
-            addEliminationVotes(key_countmap);
-            candidates.remove(key_countmap);
+
+            for(int m=0; m<votes_copy.size(); m++) {
+                if (String.valueOf(votes_copy.get(m).charAt(0)).equals(key_countmap)) {
+                    elimination_counter++;
+                }
+            }
+
+            if(elimination_counter > 0) {
+                counter_winner++;
+                eliminated.add(key_countmap);
+                addEliminationVotes(key_countmap);
+                candidates.remove(key_countmap);
+            }
+            else {
+                counter_winner++;
+                eliminated.add(key_countmap);
+                candidates.remove(key_countmap);
+            }
+
+            System.out.println("Vote map after round: "+counter_winner);
+            Iterator it_candmap = candidates.keySet().iterator();
+            while (it_candmap.hasNext()){
+                String key = (String) it_candmap.next();
+                int value = candidates.get(key);
+                System.out.println("Key is:"+key+" and value is:" +value);
+            }
+            System.out.println(" ");
         }
+
     }
 
     public static void addEliminationVotes(String val){
         int value;
-        String key;
+        String key, vote;
         HashMap<String, Integer> countmap = new HashMap<>();
-        for(int i=0; i<votes_copy.size();i++){
-            String vote = votes_copy.get(i);
+
+        for(int i=0; i<votes_copy.size();i++) {
+            vote = votes_copy.get(i);
+            //If first pref is winner and size of vote <= rankmap.size
+            if ((String.valueOf(vote.charAt(0)).equals(val)) && (vote.length() <= 1)) {
+                votes.remove(vote);
+            }
+        }
+
+        for(int i=0; i<votes.size();i++){
+            vote = votes.get(i);
             key = String.valueOf(vote.charAt(0));
             putInCountMap(i,val,key,vote, countmap);
         }
@@ -129,15 +167,7 @@ public class voting {
             System.out.println("Key is: "+key+" value is:"+value);
         }
 
-        System.out.println("Vote map after round: "+counter_winner);
-        Iterator it_candmap = candidates.keySet().iterator();
-        while (it_candmap.hasNext()){
-            key = (String) it_candmap.next();
-            value = candidates.get(key);
-            System.out.println("Key is:"+key+" and value is:" +value);
-        }
-        System.out.println(" ");
-
+        addvotes();
     }
 
     public static void putInCountMap(int i, String val, String key, String vote, HashMap<String, Integer> countmap){
@@ -150,6 +180,31 @@ public class voting {
             }
             else {
                 countmap.put(key1,1);
+            }
+        }
+    }
+
+    //Would work for both Elimination & Surplus counting
+    private static void checkIfNextElectedSurplus(String vote) {
+        int count=1;
+        for(int j=0; j<winner.size(); j++){
+            if(String.valueOf(vote.charAt(count)).equals(winner.get(j))) {
+                count++;
+            }
+            else {
+                checkIfnextCharElected = count;
+            }
+        }
+        checkIfNextElectedElimination(count, vote);
+    }
+    private static void checkIfNextElectedElimination(int count, String vote) {
+        for(int l=0; l<eliminated.size(); l++){
+            if(count<vote.length()) {
+                if (String.valueOf(vote.charAt(count)).equals(eliminated.get(l))) {
+                    count++;
+                } else {
+                    checkIfnextCharElected = count;
+                }
             }
         }
     }
@@ -212,29 +267,7 @@ public class voting {
         addvotes();
     }
 
-    //Would work for both Elimination & Surplus counting
-    private static void checkIfNextElectedSurplus(String vote) {
-        int count=1;
-        for(int j=0; j<winner.size(); j++){
-            if(String.valueOf(vote.charAt(count)).equals(winner.get(j))) {
-                count++;
-            }
-            else {
-                checkIfnextCharElected = count;
-            }
-        }
-        checkIfNextElectedElimination(count, vote);
-    }
-    private static void checkIfNextElectedElimination(int count, String vote) {
-        for(int j=0; j<eliminated.size(); j++){
-            if(String.valueOf(vote.charAt(count)).equals(eliminated.get(j))) {
-                count++;
-            }
-            else {
-                checkIfnextCharElected = count;
-            }
-        }
-    }
+
 
 
 
